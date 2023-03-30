@@ -55,6 +55,13 @@ if __name__ == "__main__":
         logger.info(f"REPO value: {REPO_NAME}")
         repo = g.get_repo(REPO_NAME)
         pr = repo.get_pull(int(str(PR_NUMBER)))
-        diff_url = pr.diff_url.diff_url
-        logger.info(f'diff: {diff_url}')
+        head_sha = pr.head.sha
+        files = list(islice(pr.get_files(), 51))
+        for file in files:
+            patch = file.patch
+            path = file.filename
+            contents = repo.get_contents(path, ref=head_sha)
+            content = contents.decoded_content.decode()
+            logger.info(f"REPO patch: {patch}")
+            logger.info(f"REPO content: {content}")
 
