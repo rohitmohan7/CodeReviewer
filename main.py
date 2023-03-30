@@ -23,10 +23,15 @@ except KeyError:
     #logger.info("Token not available!")
     #raise
 
+try:
+    PR_NUMBER = os.environ["PR_NUMBER"]
+except KeyError:
+    PR_NUMBER = "PR Number not available!"
+
 
 if __name__ == "__main__":
     g = Github(SECRET_TOKEN)
-    logger.info(f"Token value: {SECRET_TOKEN}")
+    logger.info(f"PR value: {PR_NUMBER}")
 
     r = requests.get('https://weather.talkpython.fm/api/weather/?city=Berlin&country=DE')
     if r.status_code == 200:
