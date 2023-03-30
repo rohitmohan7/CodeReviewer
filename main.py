@@ -33,6 +33,11 @@ try:
 except KeyError:
     BRANCH = "BRANCH not available!"
 
+try:
+    REPO_NAME = os.environ["REPO_NAME"]
+except KeyError:
+    REPO_NAME = "BRANCH not available!"
+
 
 if __name__ == "__main__":
     g = Github(SECRET_TOKEN)
@@ -47,3 +52,5 @@ if __name__ == "__main__":
     if str(PR_NUMBER) != "":
         logger.info(f"PR value: {PR_NUMBER}")
         logger.info(f"BRANCH value: {BRANCH}")
+        logger.info(f"REPO value: {REPO_NAME}")
+        #repo = g.get_repo(REPO_NAME)
