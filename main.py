@@ -64,3 +64,6 @@ if __name__ == "__main__":
             logger.info(f"REPO patch: {patch}")
             logger.info(f"REPO content: {content}")
 
+        files = pr.get_commits()[-1].files
+        for file in files:
+            logger.info(f"REPO file name: {file.filename}")
