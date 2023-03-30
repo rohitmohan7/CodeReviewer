@@ -1,7 +1,7 @@
 import logging
 import logging.handlers
 import os
-
+from github import Github
 import requests
 
 logger = logging.getLogger(__name__)
@@ -17,15 +17,16 @@ logger_file_handler.setFormatter(formatter)
 logger.addHandler(logger_file_handler)
 
 try:
-    SOME_SECRET = os.environ["SOME_SECRET"]
+    SECRET_TOKEN = os.environ["SECRET_TOKEN"]
 except KeyError:
-    SOME_SECRET = "Token not available!"
+    SECRET_TOKEN = "Token not available!"
     #logger.info("Token not available!")
     #raise
 
 
 if __name__ == "__main__":
-    logger.info(f"Token value: {SOME_SECRET}")
+    g = Github(SECRET_TOKEN)
+    logger.info(f"Token value: {SECRET_TOKEN}")
 
     r = requests.get('https://weather.talkpython.fm/api/weather/?city=Berlin&country=DE')
     if r.status_code == 200:
