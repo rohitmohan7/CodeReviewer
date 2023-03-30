@@ -31,10 +31,13 @@ except KeyError:
 
 if __name__ == "__main__":
     g = Github(SECRET_TOKEN)
-    logger.info(f"PR value: {PR_NUMBER}")
+    logger.info(f"Token value: {SECRET_TOKEN}")
 
     r = requests.get('https://weather.talkpython.fm/api/weather/?city=Berlin&country=DE')
     if r.status_code == 200:
         data = r.json()
         temperature = data["forecast"]["temp"]
         logger.info(f'Weather in Berlin: {temperature}')
+
+    if str(PR_NUMBER) != "":
+        logger.info(f"PR value: {PR_NUMBER}")
