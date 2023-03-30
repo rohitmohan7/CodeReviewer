@@ -23,6 +23,11 @@ except KeyError:
     #logger.info("Token not available!")
     #raise
 
+try:
+    PR_NUMBER = os.environ["PR_NUMBER"]
+except KeyError:
+    PR_NUMBER = "PR Number not available!"
+
 
 if __name__ == "__main__":
     g = Github(SECRET_TOKEN)
@@ -33,3 +38,6 @@ if __name__ == "__main__":
         data = r.json()
         temperature = data["forecast"]["temp"]
         logger.info(f'Weather in Berlin: {temperature}')
+
+    if str(PR_NUMBER) != "":
+        logger.info(f"PR value: {PR_NUMBER}")

@@ -6,6 +6,7 @@ on:
       - '*'
       - '!main'   # excludes master
   pull_request:
+    types: [opened, reopened]
     branches: main
 
 jobs:
@@ -17,6 +18,7 @@ jobs:
         id: find-pull-request
         with:
           branch: ${{ github.ref }}
+        if: github.event_name != 'pull_request'
       - run: echo "Pull Request ${PR_NUMBER}"
         env:
           PR_NUMBER: ${{ steps.find-pull-request.outputs.number }}
