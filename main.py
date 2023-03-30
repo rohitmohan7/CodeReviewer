@@ -55,6 +55,6 @@ if __name__ == "__main__":
         logger.info(f"REPO value: {REPO_NAME}")
         repo = g.get_repo(REPO_NAME)
         pr = repo.get_pull(int(str(PR_NUMBER)))
-        diff_url = pr.diff_url
+        diff_url = pr.diff_url.diff_url
         logger.info(f'diff: {diff_url}')
 
