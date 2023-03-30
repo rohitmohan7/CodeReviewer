@@ -3,7 +3,6 @@ import logging.handlers
 import os
 from github import Github
 import requests
-from itertools import islice
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -57,8 +56,7 @@ if __name__ == "__main__":
         repo = g.get_repo(REPO_NAME)
         pr = repo.get_pull(int(str(PR_NUMBER)))
         head_sha = pr.head.sha
-        files = list(islice(pr.get_files(), 51))
-        for file in files:
+        for file in pr.get_files():
             patch = file.patch
             path = file.filename
             contents = repo.get_contents(path, ref=head_sha)
