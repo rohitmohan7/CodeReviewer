@@ -12,6 +12,14 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
+      - name: Find Pull Request
+        uses: juliangruber/find-pull-request-action@v1
+        id: find-pull-request
+        with:
+          branch: ${{ github.ref }}
+      - run: echo "Pull Request ${PR_NUMBER}"
+        env:
+          PR_NUMBER: ${{ steps.find-pull-request.outputs.number }}
 
       - name: checkout repo content
         uses: actions/checkout@v3 # checkout the repository content to github runner
