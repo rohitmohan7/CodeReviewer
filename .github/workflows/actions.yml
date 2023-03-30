@@ -1,9 +1,6 @@
 name: run main.py
 
 on:
-  pull_request:
-    branches: 
-      - main
   push:
     branches:
       - '*'
