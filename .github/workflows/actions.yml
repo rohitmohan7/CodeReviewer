@@ -39,6 +39,7 @@ jobs:
       - name: execute py script # run main.py
         env:
           SECRET_TOKEN: ${{ secrets.SECRET_TOKEN }}
+          PR_NUMBER: ${{ steps.find-pull-request.outputs.number }}
         run: python main.py
           
       - name: commit files
