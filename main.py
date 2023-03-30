@@ -3,6 +3,7 @@ import logging.handlers
 import os
 from github import Github
 import requests
+from itertools import islice
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
