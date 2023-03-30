@@ -57,6 +57,7 @@ if __name__ == "__main__":
         pr = repo.get_pull(int(str(PR_NUMBER)))
         head_sha = pr.head.sha
         for file in pr.get_files():
+            logger.info(f"REPO file name: {file.filename}")
             patch = file.patch
             path = file.filename
             contents = repo.get_contents(path, ref=head_sha)
@@ -64,8 +65,8 @@ if __name__ == "__main__":
             logger.info(f"REPO patch: {patch}")
             logger.info(f"REPO content: {content}")
         
-        commits = pr.get_commits()
-        files = commits[commits.totalCount - 1].files
-        for file in files:
-            logger.info(f"REPO file name: {file.filename}")
-            logger.info(f"REPO patch: {file.patch}")
+        #commits = pr.get_commits()
+        #files = commits[commits.totalCount - 1].files
+        #for file in files:
+        #    logger.info(f"REPO file name: {file.filename}")
+        #    logger.info(f"REPO patch: {file.patch}")
