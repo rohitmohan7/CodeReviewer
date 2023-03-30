@@ -28,6 +28,11 @@ try:
 except KeyError:
     PR_NUMBER = "PR Number not available!"
 
+try:
+    BRANCH = os.environ["BRANCH"]
+except KeyError:
+    BRANCH = "BRANCH not available!"
+
 
 if __name__ == "__main__":
     g = Github(SECRET_TOKEN)
@@ -41,3 +46,4 @@ if __name__ == "__main__":
 
     if str(PR_NUMBER) != "":
         logger.info(f"PR value: {PR_NUMBER}")
+        logger.info(f"BRANCH value: {BRANCH}")
