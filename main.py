@@ -63,8 +63,9 @@ if __name__ == "__main__":
             content = contents.decoded_content.decode()
             logger.info(f"REPO patch: {patch}")
             logger.info(f"REPO content: {content}")
-
-        files = (pr.get_commits()[(len(pr.get_commits())-1)]).files
+        
+        commits = pr.get_commits()
+        files = commits[commits.totalCount - 1].files
         for file in files:
             logger.info(f"REPO file name: {file.filename}")
             logger.info(f"REPO patch: {file.patch}")
