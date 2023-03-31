@@ -12,9 +12,14 @@
 // it, use it, or disclose the information contained in it without
 // the written authorization of Ford Motor Company.
 //
+#ifndef NETUTIL_HPP_
+#define NETUTIL_HPP_
+
+#include <string>
 
 namespace fnv {
 namespace vnm {
+    static const std::string empty = std::string();
 
     std::string GetIfAddress( const std::string &ifnm, size_t fibno=0 );
     std::string FindIfName( const std::string &ipaddr, size_t fibno );
@@ -34,6 +39,7 @@ namespace vnm {
     int DeleteTunnel( const std::string &name, size_t fib=0 );
     int SetIfaceLink1Flag( const std::string &name, size_t fib=0 );
     int GetIfaceFlags( const std::string &name, unsigned long &flags, size_t fib=0 );
+    int SetIfaceFlags( const std::string &name, long flag, size_t fib=0 );
     int SetIfaceAddr( const std::string &name, const std::string &addr_string, size_t fib=0 );
     int DelIfaceAddr( const std::string &name, size_t fib=0 );
     int SetIfaceNetPrefixLen( const std::string &name, size_t len, size_t fib=0 );
@@ -43,6 +49,8 @@ namespace vnm {
     int SetIfaceVlan( const std::string &name, const std::string &parentifnm, int id, size_t fib=0 );
     int AddDefRoute( const std::string &gateway, size_t fib=0 );
     int DelDefRoute( const std::string &gateway, size_t fib=0 );
-
+    int SetIfaceHwAddr( const std::string &name, const std::string &addr_string, size_t fib=0 );
+    int ArpSet( const std::string &host_name, const std::string &addr, const std::string& device=empty, size_t fib=0 );
+    int ArpDel( const std::string &host_name, const std::string& device=empty, size_t fib=0 );
 } // vnm
 } // fnv
