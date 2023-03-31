@@ -55,16 +55,14 @@ if __name__ == "__main__":
         logger.info(f"REPO value: {REPO_NAME}")
         repo = g.get_repo(REPO_NAME)
         pr = repo.get_pull(int(str(PR_NUMBER)))
-        head_sha = pr.head.sha
-        for file in pr.get_files():
-            logger.info(f"REPO file name: {file.filename}")
-            patch = file.patch
-            path = file.filename
-            contents = repo.get_contents(path, ref=head_sha)
-            content = contents.decoded_content.decode()
-            logger.info(f"REPO patch: {patch}")
-            logger.info(f"REPO content: {content}")
+        #head_sha = pr.head.sha
+        main_head = repo.get_branch("main")
+        last_head = repo.get_branch(str(BRANCH).rsplit('/', 1)[-1])
+
+        diff_url = repo.compare(main_head.commit.sha,
+                        last_head.commit.sha)
         
+        logger.info(f'Diff: {diff_url.diff_url}')
         #commits = pr.get_commits()
         #files = commits[commits.totalCount - 1].files
         #for file in files:
