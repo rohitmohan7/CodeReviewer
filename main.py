@@ -63,7 +63,7 @@ if __name__ == "__main__":
             contents = repo.get_contents(path, ref=head_sha)
             content = contents.decoded_content.decode()
             logger.info(f"REPO patch: {patch}")
-            logger.info(f"REPO content: {content}")
+            #logger.info(f"REPO content: {content}")
         
         #commits = pr.get_commits()
         #files = commits[commits.totalCount - 1].files
