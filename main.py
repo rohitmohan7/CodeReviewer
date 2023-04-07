@@ -66,9 +66,10 @@ if __name__ == "__main__":
             main_content = contents.decoded_content.decode()
             pattern = r"^\+[\s\S]*?(?=\n[^+]+|\Z)"
             x = re.findall(pattern, patch, re.MULTILINE | re.DOTALL)
-            logger.info(f"REPO added lines: {x}")
-
-            #logger.info(f"REPO patch: {patch}")
+            
+            
+            #logger.info(f"REPO added lines: {x}")
+            logger.info(f"REPO patch: {patch}")
             #logger.info(f"REPO content: {content}")
         
         #commits = pr.get_commits()
