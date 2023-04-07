@@ -65,7 +65,7 @@ if __name__ == "__main__":
             contents = repo.get_contents(path, ref=repo.get_branch("main").commit.sha)
             main_content = contents.decoded_content.decode()
             pattern = r"^\+[\s\S]*?(?=\n[^+]+|\Z)"
-            x = re.findall(pattern, patch)
+            x = re.findall(pattern, patch, re.MULTILINE | re.DOTALL)
             logger.info(f"REPO added lines: {x}")
 
             #logger.info(f"REPO patch: {patch}")
