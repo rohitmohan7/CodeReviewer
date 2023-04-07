@@ -24,6 +24,9 @@
 #else
 #include <linux/if_vlan.h>
 #include <linux/sockios.h>
+#include <linux/if_ether.h>
+#include <net/if_arp.h>
+#include <netdb.h>
 #endif
 #include <sys/ioctl.h>
 #include <unistd.h>
@@ -353,9 +356,7 @@ int GetIfaceFlags( const std::string &name, unsigned long &flags, size_t fib ) {
     return 0;
 }
 
-
-#ifdef __QNXNTO__
-static int SetIfaceFlags( const std::string &name, long flag, size_t fib ) {
+int SetIfaceFlags( const std::string &name, long flag, size_t fib ) {
     struct ifreq ifr{};
     if (name.length() >= sizeof ifr.ifr_name) {
         return EINVAL;
@@ -394,7 +395,6 @@ static int SetIfaceFlags( const std::string &name, long flag, size_t fib ) {
     loggerSp.i( "Iface flags set, interface name: %s.",  name.c_str());
     return 0;
 }
-#endif
 
 static int SetIfaceAddrField( const std::string &name, unsigned long request, const struct sockaddr_in &sa, size_t fib ) {
     struct ifreq ifr{};
@@ -729,7 +729,115 @@ int SetIfaceAddr( const std::string &name, const std::string &addr_string, size_
     return 0;
 }
 
-#ifdef __QNXNTO__
+#ifndef __QNXNTO__
+/* Input an Ethernet address and convert to binary. */
+static int in_ether(char *bufp, struct sockaddr *sap)
+{
+    unsigned char *ptr;
+    char c;
+    char *orig;
+    int i;
+    unsigned val;
+
+    sap->sa_family = ARPHRD_ETHER;
+    ptr = (unsigned char *) sap->sa_data;
+
+    i = 0;
+    orig = bufp;
+    while ((*bufp != '\0') && (i < ETH_ALEN)) {
+        val = 0;
+        c = *bufp++;
+        if (isdigit(c)) {
+            val = c - '0';
+        } else if ((c >= 'a') && (c <= 'f')) {
+            val =(c - 'a') + 10;
+        } else if ((c >= 'A') && (c <= 'F')) {
+            val = (c - 'A') + 10;
+        } else {
+            logger.e("in_ether(%s): invalid ether address!\n", orig);
+            errno = EINVAL;
+            return -1;
+        }
+        val <<= 4;
+        c = *bufp;
+        if (isdigit(c)) {
+            val |= c - '0';
+        } else if ((c >= 'a') && (c <= 'f')) {
+            val |= (c - 'a') + 10;
+        } else if ((c >= 'A') && (c <= 'F')) {
+            val |= (c - 'A') + 10;
+        } else if ((c == ':') || (c == 0)) {
+            val >>= 4;
+        } else {
+            logger.e("in_ether(%s): invalid ether address!\n", orig);
+            errno = EINVAL;
+            return -1;
+        }
+        if (c != 0) {
+            bufp++;
+        }
+        *ptr++ = static_cast<unsigned char> (val & 0377);
+        i++;
+
+        /* We might get a semicolon here - not required. */
+        if (*bufp == ':') {
+            if (i == ETH_ALEN) {
+                logger.e("in_ether(%s): trailing : ignored!", orig);		/* nothing */
+            }
+            bufp++;
+        }
+    }
+
+    /* That's it.  Any trailing junk? */
+    if ((i == ETH_ALEN) && (*bufp != '\0')) {
+        logger.e("in_ether(%s): trailing junk!\n", orig);
+        errno = EINVAL;
+        return -1;
+    }
+    return 0;
+}
+
+int SetIfaceHwAddr( const std::string &name, const std::string &addr_string, size_t fib ) {
+    struct ifreq ifr{};
+    struct sockaddr sa{};
+    int rc = 0;
+
+    if (name.length() >= sizeof ifr.ifr_name || name.length() == 0 || addr_string.length() == 0) {
+        return EINVAL;
+    }
+    strncpy( ifr.ifr_name, name.c_str(), sizeof ifr.ifr_name - 1);
+
+    char host[128];
+    strncpy( host, addr_string.c_str(), (sizeof host) );
+
+    if (in_ether(host, &sa) < 0) {
+        logger.e("%s: invalid ether address.", host);
+        return EINVAL;
+    }
+
+    memcpy((char *) &ifr.ifr_hwaddr, (char *) &sa,
+           sizeof(struct sockaddr));
+
+    const int sockfd = AllocateInetSocket( fib, &rc );
+    if (sockfd==-1) {
+        return rc; //NOSONAR
+    }
+
+    if (ioctl(sockfd, SIOCSIFHWADDR, &ifr) < 0) {
+        rc = errno;
+        if (rc == EBUSY) {
+            logger.e("SIOCSIFHWADDR: %s - you may need to down the interface",
+                strerror(errno));
+        } else {
+            logger.e("SIOCSIFHWADDR: %s",
+                strerror(errno));
+        }
+    }
+
+    return rc;
+}
+#endif
+
 int DelIfaceAddr( const std::string &name, size_t fib ) {
     int rc = SetIfaceAddrField( name, SIOCDIFADDR, "", fib );
     if (rc) {
@@ -740,7 +848,6 @@ int DelIfaceAddr( const std::string &name, size_t fib ) {
     loggerSp.i( "Address deleted, interface name: %s.", name.c_str() );
     return 0;
 }
-#endif
 
 int SetIfaceNetPrefixLen( const std::string &name, size_t len, size_t fib ) {
     if (len>BITS_IN_IPV4ADDR) {
@@ -854,6 +961,219 @@ int DelDefRoute( const std::string &gateway, size_t fib ) {
 #else
 int DelDefRoute( __attribute__((unused)) const std::string &gateway,
                  __attribute__((unused)) size_t fib ) {
+    return ENOTSUP;
+}
+#endif
+
+
+#ifndef __QNXNTO__
+
+static int INET_resolve(char *name, struct sockaddr_in *sin, int hostfirst)
+{
+    struct hostent *hp;
+    struct netent *np;
+
+    /* Grmpf. -FvK */
+    sin->sin_family = AF_INET;
+    sin->sin_port = 0;
+
+    /* Default is special, meaning 0.0.0.0. */
+    if (!strcmp(name, "default")) {
+        sin->sin_addr.s_addr = INADDR_ANY;
+        return 1;
+    }
+    /* Look to see if it's a dotted quad. */
+    if (inet_aton(name, &sin->sin_addr)) {
+        return 0;
+    }
+    /* If we expect this to be a hostname, try hostname database first */
+
+    if (hostfirst) {
+        logger.i ("gethostbyname (%s)", name);
+    }
+
+    if (hostfirst && 
+    ((hp = gethostbyname(name)) != static_cast<struct hostent *>(NULL))) {
+        memcpy((char *) &sin->sin_addr, (char *) hp->h_addr_list[0], 
+        sizeof(struct in_addr));
+        return 0;
+    }
+    /* Try the NETWORKS database to see if this is a known network. */
+    logger.i ("getnetbyname (%s)", name);
+
+    if ((np = getnetbyname(name)) != static_cast<struct netent *> (NULL)) {
+        sin->sin_addr.s_addr = htonl(np->n_net);
+        return 1;
+    }
+    if (hostfirst) {
+        /* Don't try again */
+        errno = h_errno;
+        return -1;
+    }
+
+    logger.i ("gethostbyname (%s)", name);
+
+    if ((hp = gethostbyname(name)) == static_cast<struct hostent *>(NULL)) {
+        errno = h_errno;
+        return -1;
+    }
+    memcpy((char *) &sin->sin_addr, (char *) hp->h_addr_list[0], 
+       sizeof(struct in_addr));
+
+    return 0;
+}
+
+static void INET_reserror(char *text)
+{
+    herror(text);
+}
+
+int ArpSet( const std::string &host_name, const std::string &addr, const std::string& device, size_t fib ) {
+    char host[128];
+    struct arpreq req;
+    struct sockaddr_storage ss;
+    struct sockaddr *sa;
+
+
+    memset((char *) &req, 0, sizeof(req));
+
+    /* Resolve the host name. */
+    if (host_name.length() == 0) {
+        logger.e("arp: need host name");
+        return EINVAL;
+    }
+    strncpy(host, host_name.c_str(), (sizeof host));
+    sa = (struct sockaddr *) &ss;
+    if (INET_resolve(host, (struct sockaddr_in *) sa, 0) < 0) {
+        INET_reserror(host);
+        logger.e("arp: invalid host name: %s", host_name.c_str());
+        return EINVAL;
+    }
+    /* If a host has more than one address, use the correct one! */
+    memcpy((char *) &req.arp_pa, (char *) sa, sizeof(struct sockaddr));
+
+    /* Fetch the hardware address. */
+    if (addr.length() == 0) {
+        logger.e("arp: need hardware address");
+        return EINVAL;
+    }
+
+    if (in_ether((char *) addr.c_str(), &req.arp_ha) < 0) {
+        logger.e("arp: invalid hardware address: %s", addr.c_str());
+        return EINVAL;
+    }
+
+    /* Fill in the remainder of the request. */
+    req.arp_flags = ATF_PERM | ATF_COM;
+
+    if (device.length() > 0) {
+        strcpy(req.arp_dev, device.c_str());
+    }
+
+    int sockrc;
+    const int sockfd = AllocateInetSocket( fib, &sockrc );
+    if (sockfd==-1) {
+        return sockrc; //NOSONAR
+    }
+
+    /* Call the kernel. */
+    logger.i("arp: SIOCSARP()\n");
+    if (ioctl(sockfd, SIOCSARP, &req) < 0) {
+        logger.e("arp: SIOCSARP error: %d", errno);
+        return errno;
+    }
+    return 0;
+}
+#else
+int ArpSet( __attribute__((unused)) const std::string &host,
+            __attribute__((unused)) const std::string &addr,
+            __attribute__((unused)) const std::string &device,
+            __attribute__((unused)) size_t fib ) {
+    return ENOTSUP;
+}
+#endif
+
+#ifndef __QNXNTO__
+void dontpub( arpreq& req, const int& sockfd, char* host ) {
+    req.arp_flags |= ATF_PUBL;
+
+    if (ioctl(sockfd, SIOCDARP, &req) < 0) {
+        if ((errno == ENXIO) || (errno == ENOENT)) {
+            logger.e("No ARP entry for %s\n", host);
+            return;
+        }
+        logger.i("SIOCDARP(pub) flags & 1");
+    }
+}
+int ArpDel( const std::string &host_name, const std::string& device, size_t fib ) {
+    char host[128];
+    struct arpreq req;
+    struct sockaddr_storage ss;
+    struct sockaddr *sa;
+    int flags = 0;
+    int deleted = 0;
+
+    memset((char *) &req, 0, sizeof(req));
+
+    /* Resolve the host name. */
+    if (host_name.length() == 0) {
+        logger.e("arp: need host name");
+        return -1;
+    }
+    strncpy(host, host_name.c_str(), (sizeof host));
+    sa = (struct sockaddr *) &ss;
+    if (INET_resolve(host, (struct sockaddr_in *) sa, 0) < 0) {
+        INET_reserror(host);
+        return -1;
+    }
+    /* If a host has more than one address, use the correct one! */
+    memcpy((char *) &req.arp_pa, (char *) sa, sizeof(struct sockaddr));
+
+    req.arp_flags = ATF_PERM;
+
+    // if neighter priv nor pub is given, work on both
+    flags = 3;
+
+    if (device.length() > 0) {
+        strcpy(req.arp_dev, device.c_str());
+    }
+ 
+    /* unfortuatelly the kernel interface does not allow us to
+       delete private entries anlone, so we need this hack
+       to avoid "not found" errors if we try both. */
+    deleted = 0;
+
+    int rcerrno = 0;
+    const int sockfd = AllocateInetSocket( fib, &rcerrno );
+    if (sockfd==-1) {
+        return rcerrno;
+    }
+
+    /* Call the kernel. */
+    if (flags & 2) {
+        if (ioctl(sockfd, SIOCDARP, &req) < 0) {
+            if ((errno == ENXIO) || (errno == ENOENT)) {
+                if (flags & 1) {
+                    dontpub(req, sockfd, host);
+                }
+                logger.e("No ARP entry for %s", host);
+                return -1;
+            }
+            logger.e("SIOCDARP(dontpub)");
+            return -1;
+        } else {
+            deleted = 1;
+        }
+    }
+    if (!deleted && (flags & 1)) {
+        dontpub(req, sockfd, host);
+    }
+    return 0;
+}
+#else
+int ArpDel( __attribute__((unused)) const std::string &host,
+            __attribute__((unused)) const std::string &device,
+            __attribute__((unused)) size_t fib ) {
     return ENOTSUP;
 }
 #endif
