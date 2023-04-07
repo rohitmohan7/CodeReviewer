@@ -3,6 +3,7 @@ import logging.handlers
 import os
 from github import Github
 import requests
+import re
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -38,7 +39,6 @@ try:
 except KeyError:
     REPO_NAME = "BRANCH not available!"
 
-
 if __name__ == "__main__":
     g = Github(SECRET_TOKEN)
     logger.info(f"Token value: {SECRET_TOKEN}")
@@ -62,7 +62,13 @@ if __name__ == "__main__":
             path = file.filename
             contents = repo.get_contents(path, ref=head_sha)
             content = contents.decoded_content.decode()
-            logger.info(f"REPO patch: {patch}")
+            contents = repo.get_contents(path, ref=repo.get_branch("main").commit.sha)
+            main_content = contents.decoded_content.decode()
+
+            x = re.findall("^\+[\s\S]*?(?=\n[^+]+|\z)", patch)
+            logger.info(f"REPO added lines: {x}")
+
+            #logger.info(f"REPO patch: {patch}")
             #logger.info(f"REPO content: {content}")
         
         #commits = pr.get_commits()
